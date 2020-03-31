@@ -1,0 +1,171 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: empire
+  labels:
+    name: empire
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dock-security
+  namespace: empire
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    name: dock-security-frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dock-security-frontend
+  namespace: empire
+spec:
+  selector:
+    matchLabels:
+      name: dock-security-frontend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: dock-security-frontend
+    spec:
+      containers:
+      - name: dock-security-frontend
+        image: docker.io/cilium/json-mock:1.0
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          exec:
+            command: ["curl", "-sS", "-o", "/dev/null", "localhost"]
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "-o", "/dev/null", "localhost"]
+          periodSeconds: 3
+          successThreshold: 1
+          failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docking-doors
+  namespace: empire
+spec:
+  ports:
+  - port: 80
+  selector:
+    name: docking-door
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docking-door
+  namespace: empire
+spec:
+  selector:
+    matchLabels:
+      name: docking-door
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        name: docking-door
+    spec:
+      containers:
+      - name: docking-door
+        image: docker.io/cilium/json-mock:1.0
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          exec:
+            command: ["curl", "-sS", "-o", "/dev/null", "dock-security"]
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "-o", "/dev/null", "dock-security"]
+          periodSeconds: 3
+          successThreshold: 1
+          failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: janitor-bots
+  namespace: empire
+spec:
+  ports:
+  - port: 80
+  selector:
+    name: janitor-bot
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: janitor-bot
+  namespace: empire
+spec:
+  selector:
+    matchLabels:
+      name: janitor-bot
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        name: janitor-bot
+    spec:
+      containers:
+      - name: janitor-bot
+        image: docker.io/cilium/json-mock:1.0
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          exec:
+            command: ["curl", "-sS", "-o", "/dev/null", "docking-doors"]
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "-o", "/dev/null", "docking-doors"]
+          periodSeconds: 3
+          successThreshold: 1
+          failureThreshold: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: terminal
+  namespace: empire
+spec:
+  selector:
+    matchLabels:
+      name: terminal
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: terminal
+    spec:
+      containers:
+      - name: terminal
+        image: docker.io/cilium/json-mock:1.0
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          exec:
+            command: ["curl", "-sS", "-o", "/dev/null", "communications-service.alliance.svc.cluster.local"]
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "-o", "/dev/null", "communications-service.alliance.svc.cluster.local"]
+          periodSeconds: 3
+          successThreshold: 1
+          failureThreshold: 2
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "secure-empire"
+  namespace: empire
+spec:
+  endpointSelector:
+    matchLabels:
+      {}
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        {}
